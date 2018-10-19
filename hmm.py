@@ -3,7 +3,7 @@ import numpy as np
 
 class HiddenMarkovModel():
 
-    def __init__(self, p_transmission, p_emission, observations=None):
+    def __init__(self, p_transmission, p_emission, states, observations, p_start):
         '''
         Create a Hidden Markov Model using:
             n hidden states
@@ -17,4 +17,64 @@ class HiddenMarkovModel():
         self. p_emission = p_emission
         self.m = self.p_emission.shape[0]
         self.n = self.p_emission.shape[1]
-        self.observations = observations
+        self.state_names = states
+        self.states = np.arange(0, len(states))
+        self.characters = observations
+        self.observations = np.arange(0, len(observations))
+        self.p_start = p_start
+
+    def dptable(self, V):
+        # Print a table of steps from dictionary
+        yield " ".join(("%12d" % i) for i in range(len(V)))
+        for state in V[0]:
+            yield "%.7s: " % state + " ".join("%.7s" % ("%f" % v[state]["prob"]) for v in V)
+
+    def viterbi(self, sequence_obs):
+        V = [{}]
+
+        index_sequence = np.uint8(np.zeros(len(sequence_obs)))
+        for i in range(len(sequence_obs)):
+            index_sequence[i] = self.characters.index(sequence_obs[i])
+
+        for s in self.states:
+            V[0][s] = {'prob': self.p_start[s] * self.p_emission[s][index_sequence[0]],
+                       'prev': None}
+
+        for t in range(1, len(index_sequence)):
+            V.append({})
+            for s in self.states:
+                p_trans_max = max(V[t-1][prev_s]['prob'] * self.p_transmission[prev_s][s] for prev_s in self.states)
+                for prev_s in self.states:
+                    if V[t-1][prev_s]['prob'] * self.p_transmission[prev_s][s] == p_trans_max:
+                        p_max = p_trans_max * self.p_emission[s][index_sequence[t]]
+                        V[t][s] = {'prob': p_max, 'prev': prev_s}
+                        break
+
+        for line in self.dptable(V):
+            print(line)
+
+        opt = []
+        # the highest probability
+        p_max = max(value['prob'] for value in V[-1].values())
+        prev = None
+        # get most probable state
+        for s, data in V[-1].items():
+            if data['prob'] == p_max:
+                opt.append(s)
+                prev = s
+                break
+        # and backtrack until first observation
+        for t in range(len(V) - 2, -1, -1):
+            opt.insert(0, V[t + 1][prev]['prev'])
+            prev = V[t + 1][prev]['prev']
+
+        print('The steps of states are', opt, ' with highest probability of', p_max)
+
+if __name__ == '__main__':
+    emission = np.array([[0.5, 0.5], [0.75, 0.25]])
+    transmission = np.array([[0.9, 0.1], [0.1, 0.9]])
+    start = np.array([0.5, 0.5])
+
+    hmm = HiddenMarkovModel(transmission, emission, ['F', 'B'], ['H', 'T'], start)
+    sequence = 'HHHHHTTTTT'
+    hmm.viterbi(list(sequence))
