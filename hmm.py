@@ -18,4 +18,3 @@ class HiddenMarkovModel():
         self.m = self.p_emission.shape[0]
         self.n = self.p_emission.shape[1]
         self.observations = observations
-        
