@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class HiddenMarkovModel():
+class HiddenMarkovModel:
 
     def __init__(self, p_transmission, p_emission, states, observations, p_start):
         '''
@@ -11,7 +11,9 @@ class HiddenMarkovModel():
 
         :param p_transmission: (n+2) x (n+2) numpy array of transmission probabilities
         :param p_emission: m x n numpy array of emission probabilities
-        :param observations: 1 x m numpy array of possible emitted characters
+        :param states: 1 x n array of states (can be chars or strings, converted to indices later)
+        :param observations: 1 x m numpy array of possible emitted characters (also converted to indices later)
+        :param p_start: 1 x n array of probabilities of transitioning from the start state to any other state
         '''
         self.p_transmission = p_transmission
         self. p_emission = p_emission
@@ -23,14 +25,23 @@ class HiddenMarkovModel():
         self.observations = np.arange(0, len(observations))
         self.p_start = p_start
 
-    @staticmethod
-    def dptable(V, sequence):
-        # Print a table of steps from dictionary
+    def dptable(self, V, sequence):
+        '''
+        :param V: the viterbi table generated from a given sequence
+        :param sequence: the character sequence in consideration
+        :return: a table of posterior probabilities of every state at every position in the sequence
+        '''
         yield '\t  ' + '       '.join('%.7s' % ('%.7s' % sequence[i] + '') for i in range(len(V)))
         for state in V[0]:
-            yield '%.7s: ' % state + ' '.join('%.7s' % ('%f' % v[state]['prob']) for v in V)
+            yield '%.7s: ' % self.state_names[state] + ' '.join('%.7s' % ('%f' % v[state]['prob']) for v in V)
 
     def viterbi(self, sequence_obs):
+        '''
+        :param sequence_obs: a character sequence to be analyzed
+        :return: opt, V
+            opt: the most probable path taken given the input sequence
+            V: the viterbi table
+        '''
         V = [{}]
 
         index_sequence = np.uint8(np.zeros(len(sequence_obs)))
@@ -70,12 +81,18 @@ class HiddenMarkovModel():
             prev = V[t + 1][prev]['prev']
         state_path = ' -> '.join(self.state_names[i] for i in opt)
         print('The steps of states are', state_path, 'with highest probability of', p_max)
+        return opt, V
+
 
 if __name__ == '__main__':
     emission = np.array([[0.5, 0.5], [0.75, 0.25]])
     transmission = np.array([[0.9, 0.1], [0.1, 0.9]])
     start = np.array([0.5, 0.5])
 
-    hmm = HiddenMarkovModel(transmission, emission, ['F', 'B'], ['H', 'T'], start)
+    hmm = HiddenMarkovModel(p_transmission=transmission,
+                            p_emission=emission,
+                            states=['F', 'B'],
+                            observations=['H', 'T'],
+                            p_start=start)
     sequence = 'HHHHHTTTTT'
-    hmm.viterbi(list(sequence))
+    opt, V = hmm.viterbi(list(sequence))
