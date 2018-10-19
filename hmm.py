@@ -23,11 +23,12 @@ class HiddenMarkovModel():
         self.observations = np.arange(0, len(observations))
         self.p_start = p_start
 
-    def dptable(self, V):
+    @staticmethod
+    def dptable(V, sequence):
         # Print a table of steps from dictionary
-        yield " ".join(("%12d" % i) for i in range(len(V)))
+        yield '\t  ' + '       '.join('%.7s' % ('%.7s' % sequence[i] + '') for i in range(len(V)))
         for state in V[0]:
-            yield "%.7s: " % state + " ".join("%.7s" % ("%f" % v[state]["prob"]) for v in V)
+            yield '%.7s: ' % state + ' '.join('%.7s' % ('%f' % v[state]['prob']) for v in V)
 
     def viterbi(self, sequence_obs):
         V = [{}]
@@ -50,7 +51,7 @@ class HiddenMarkovModel():
                         V[t][s] = {'prob': p_max, 'prev': prev_s}
                         break
 
-        for line in self.dptable(V):
+        for line in self.dptable(V, sequence_obs):
             print(line)
 
         opt = []
@@ -67,8 +68,8 @@ class HiddenMarkovModel():
         for t in range(len(V) - 2, -1, -1):
             opt.insert(0, V[t + 1][prev]['prev'])
             prev = V[t + 1][prev]['prev']
-
-        print('The steps of states are', opt, ' with highest probability of', p_max)
+        state_path = ' -> '.join(self.state_names[i] for i in opt)
+        print('The steps of states are', state_path, 'with highest probability of', p_max)
 
 if __name__ == '__main__':
     emission = np.array([[0.5, 0.5], [0.75, 0.25]])
